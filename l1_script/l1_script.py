@@ -2,7 +2,7 @@
 #Description-first script
 
 import adsk.core, adsk.fusion, adsk.cam, traceback
-import math
+import math,sys
 
 app = adsk.core.Application.get()
 ui  = app.userInterface
@@ -48,7 +48,7 @@ def createSphere(rootComp, center, r):
     
     prof = sketch.profiles.item(0)
     
-    print('profiles: ', len(sketch.profiles))
+    # print('profiles: ', len(sketch.profiles))
 
     revolves = rootComp.features.revolveFeatures
 
@@ -114,8 +114,9 @@ def move(rootComp, s1, vec):
     inp = rootComp.features.moveFeatures.createInput(t,m)
     return rootComp.features.moveFeatures.add(inp)
     
-def rotate(rootComp, s1, angs, axis):
+def rotate(rootComp, s1, angs):
     angs = [i/180 * math.pi for i in angs]
+    if sum(angs) == 0: return
     t = adsk.core.ObjectCollection.create()
     t.add(s1.bodies.item(0))
     x  = adsk.core.Matrix3D.create()
@@ -136,6 +137,24 @@ def rotate(rootComp, s1, angs, axis):
     inp = rootComp.features.moveFeatures.createInput(t,trans)
     return rootComp.features.moveFeatures.add(inp)
     
+def rotateTo(rootComp, s1, fro, to):
+    
+    fro = adsk.core.Vector3D.create(*fro)
+    to = adsk.core.Vector3D.create(*to)
+
+    t = adsk.core.ObjectCollection.create()
+    t.add(s1.bodies.item(0))
+    rot  = adsk.core.Matrix3D.create()
+    
+    trans = adsk.core.Matrix3D.create()
+    
+    rot.setToRotateTo(fro, to)    
+
+    trans.transformBy(rot)
+
+    inp = rootComp.features.moveFeatures.createInput(t,trans)
+    return rootComp.features.moveFeatures.add(inp)    
+    
 def run(context):
     ui = None
     try:
@@ -149,34 +168,105 @@ def run(context):
         # Get the root component of the active design
         rootComp = design.rootComponent
 
-        features = []
-        features += list(rootComp.features.moveFeatures)
-        features += list(rootComp.features.combineFeatures)
-        features += list(rootComp.features.extrudeFeatures)
-        features += list(rootComp.features.revolveFeatures)
-        
-        features += list(rootComp.sketches)
+#        features = []
+#        features += list(rootComp.features.moveFeatures)
+#        features += list(rootComp.features.removeFeatures)
+#        features += list(rootComp.features.combineFeatures)
+#        features += list(rootComp.features.extrudeFeatures)
+#        features += list(rootComp.features.revolveFeatures)
+#        
+#        features += list(rootComp.sketches)
+#        
+#
+#        for s in features:
+#            #print(s)
+#            s.deleteMe()
+#        items = list(design.timeline)
+#        while len(items):
+#            a = items.pop()
+#            a.entity.deleteMe()
+        t = adsk.core.ObjectCollection.create()
         
 
-        for s in features:
-            #print(s)
-            s.deleteMe()
+        for s in list(design.timeline):
+            t.add(s.entity)
 
+        if len(t): design.deleteEntities(t)
+        
+        
         origin = adsk.core.Point3D.create(0,0,0)
         circle_center = origin
         
         s1 = createSphere(rootComp,circle_center, 7)
         s2 = createSphere(rootComp,circle_center, 6)
         
-        subtractFeatures(rootComp,s1,s2)
+#        subtractFeatures(rootComp,s1,s2)
         
-        cyl = createCylinder(rootComp, origin, 2, 10)
-        
+        GR = (1 + 5 ** 0.5) / 2
+        CYL_R = 2
+        CYL_R2 = 1.5
         #move(rootComp,cyl,[0,1,0])
-        print(rootComp.xConstructionAxis)
-        rotate(rootComp,cyl,[45,45,0], rootComp.xConstructionAxis)
+        cyls = [s2]
+        for x in [-1,1]:
+            for y in [-1,1]:
+                for z in [-1,1]:
+                    cyl = createCylinder(rootComp, origin, CYL_R, 10)
+                    rotateTo(rootComp,cyl,[0,0,1],[x,y,z])
+                    cyls.append(cyl)        
+                    
+#        subtractFeatures(rootComp,s1,cyls)   
+#        cyls = []                 
+                    
+        for x in [0]:
+            for y in [-GR,GR]:
+                for z in [-1/GR,1/GR]:
+                    cyl = createCylinder(rootComp, origin, CYL_R, 10)
+                    rotateTo(rootComp,cyl,[0,0,1],[x,y,z])
+                    cyls.append(cyl)
+#        subtractFeatures(rootComp,s1,cyls)   
+#        cyls = []    
+        for x in [-1/GR,1/GR]:
+            for y in [0]:
+                for z in [-GR,GR]:
+                    cyl = createCylinder(rootComp, origin, CYL_R, 10)
+                    rotateTo(rootComp,cyl,[0,0,1],[x,y,z])
+                    cyls.append(cyl) 
+#        subtractFeatures(rootComp,s1,cyls)   
+#        cyls = []              
+        for x in [-GR,GR]:
+            for y in [-1/GR,1/GR]:
+                for z in [0]:
+                    cyl = createCylinder(rootComp, origin, CYL_R, 10)
+                    rotateTo(rootComp,cyl,[0,0,1],[x,y,z])
+                    cyls.append(cyl) 
+#        subtractFeatures(rootComp,s1,cyls)   
+#        cyls = []        
+        for x in [0]:
+            for y in [-1,1]:
+                for z in [-GR,GR]:
+                    cyl = createCylinder(rootComp, origin, CYL_R2, 10)
+                    rotateTo(rootComp,cyl,[0,0,1],[x,y,z])
+                    cyls.append(cyl)      
+#        subtractFeatures(rootComp,s1,cyls)   
+#        cyls = []            
+        for x in [-GR,GR]:
+            for y in [0]:
+                for z in [-1,1]:
+                    cyl = createCylinder(rootComp, origin, CYL_R2, 10)
+                    rotateTo(rootComp,cyl,[0,0,1],[x,y,z])
+                    cyls.append(cyl)   
+#        subtractFeatures(rootComp,s1,cyls)   
+#        cyls = []     
+        for x in [-1,1]:
+            for y in [-GR,GR]:
+                for z in [0]:
+                    cyl = createCylinder(rootComp, origin, CYL_R2, 10)
+                    rotateTo(rootComp,cyl,[0,0,1],[x,y,z])
+                    cyls.append(cyl)   
+                    
+        subtractFeatures(rootComp,s1,cyls)   
+        cyls = []    
         
-        subtractFeatures(rootComp,s1,[cyl])
         
         
 
