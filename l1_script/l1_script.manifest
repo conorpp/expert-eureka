@@ -1,0 +1,10 @@
+{
+	"autodeskProduct":	"Fusion360",
+	"type":	"script",
+	"author":	"",
+	"description":	{
+		"":	"first script"
+	},
+	"supportedOS":	"windows|mac",
+	"editEnabled":	true
+}
